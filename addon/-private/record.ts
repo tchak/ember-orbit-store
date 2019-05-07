@@ -5,7 +5,6 @@ import Store, { HasOneRelationship, HasManyRelationship } from 'ember-orbit-stor
 
 export default class Record implements RecordIdentity {
   [attribute: string]: any;
-
   readonly id: string;
   readonly type: string;
   readonly store: Store;

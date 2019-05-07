@@ -1,10 +1,14 @@
 import { notifyPropertyChange } from '@ember/object';
-import { Cache, Record } from 'ember-orbit-store';
 import { Query, FindRecords } from '@orbit/data';
+import { Cache, Record } from 'ember-orbit-store';
 
 export default class LiveQueryArray {
   private readonly cache: Cache;
   private readonly query: Query;
+
+  private get records() {
+    return recordArrayDataCache.get(this) || [];
+  }
 
   [Symbol.iterator]() {
     return this.records[Symbol.iterator]();
@@ -17,10 +21,6 @@ export default class LiveQueryArray {
   get type() {
     const expression = this.query.expression as FindRecords;
     return expression.type;
-  }
-
-  get records() {
-    return recordArrayDataCache.get(this) || [];
   }
 
   constructor(cache: Cache, query: Query) {
