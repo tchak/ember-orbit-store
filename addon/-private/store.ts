@@ -166,6 +166,10 @@ export default class Store {
     return this.materialize(query, result);
   }
 
+  liveQuery(queryOrExpression: QueryOrExpression, options?: object, id?: string) {
+    return this.cache.liveQuery(queryOrExpression, options, id);
+  }
+
   findRelatedRecord(record: RecordIdentity, name: string) {
     return this.query(q => q.findRelatedRecord(record, name));
   }

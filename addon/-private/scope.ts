@@ -21,9 +21,6 @@ export default class Scope {
 
   live(options?: object) {
     const query = this.queryBuilder();
-    if (this.queryable instanceof Store) {
-      throw new Error('Only cache can execute a live query.');
-    }
     return this.queryable.liveQuery(query, options);
   }
 
