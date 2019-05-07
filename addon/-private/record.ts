@@ -52,7 +52,7 @@ export default class Record implements RecordIdentity {
     return this.id === record.id && this.type === record.type;
   }
 
-  notifyPropertyChange(name: string) {
+  notifyChange(name: string) {
     const cache = recordDataCache.get(this);
     if (cache) {
       delete cache[name];
@@ -60,17 +60,17 @@ export default class Record implements RecordIdentity {
     notifyPropertyChange(this, name);
   }
 
-  notifyPropertyChanges(properties: string[]): void {
+  notifyChanges(properties: string[]): void {
     if (properties.length) {
       for (let property of properties) {
-        this.notifyPropertyChange(property);
+        this.notifyChange(property);
       }
     } else {
       this.store.eachAttribute(this.type, (name: string) => {
-        this.notifyPropertyChange(name);
+        this.notifyChange(name);
       });
       this.store.eachRelationship(this.type, (name: string) => {
-        this.notifyPropertyChange(name);
+        this.notifyChange(name);
       });
     }
   }

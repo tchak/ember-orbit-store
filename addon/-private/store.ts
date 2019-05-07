@@ -6,7 +6,7 @@ import { tracked } from '@glimmer/tracking';
 import { registerWaiter, unregisterWaiter } from '@ember/test';
 import { DEBUG } from '@glimmer/env';
 import Observable from 'zen-observable';
-import { Cache, Record, Scope } from 'ember-orbit-store';
+import { Cache, Record, Scope, LiveQueryArray } from 'ember-orbit-store';
 
 enum Changes {
   None,
@@ -58,7 +58,7 @@ export default class Store {
   }
 
   async addRecord(type: string, record: Dict<any>) {
-    const id = this.source.schema.generateId();
+    const id = record.id || this.source.schema.generateId();
     const attributes: Dict<any> = {};
     const relationships: Dict<any> = {};
 
@@ -135,9 +135,9 @@ export default class Store {
     );
   }
 
-  watch(record: Record) {
-    return this.changes(record).subscribe((changes: string[]) => {
-      record.notifyPropertyChanges(changes);
+  watch(recordOrArray: Record | LiveQueryArray) {
+    return this.changes(recordOrArray).subscribe((changes: string[]) => {
+      recordOrArray.notifyChanges(changes);
     });
   }
 
@@ -178,14 +178,14 @@ export default class Store {
     return this.query(q => q.findRelatedRecords(record, name));
   }
 
-  changes(record?: Record) {
+  changes(recordOrArray?: Record | LiveQueryArray) {
     return new Observable(obs => {
       const callback = (operation?: RecordOperation) => {
         if (!obs.closed) {
-          if (!record) {
+          if (!recordOrArray) {
             obs.next([]);
           } else if (operation) {
-            const changes = this.computeChanges(record, operation);
+            const changes = this.computeChanges(recordOrArray, operation);
             switch (changes) {
             case Changes.Complete:
               obs.complete();
@@ -225,8 +225,13 @@ export default class Store {
     return results.map(result => this.materializeOne(result));
   }
 
-  private computeChanges(record: Record, operation: RecordOperation): string[] | Changes {
-    if (record.isEqual(operation.record)) {
+  private computeChanges(recordOrArray: Record | LiveQueryArray, operation: RecordOperation): string[] | Changes {
+    if (recordOrArray instanceof LiveQueryArray) {
+      if (operation.record.type === recordOrArray.type) {
+        return [];
+      }
+      return Changes.None;
+    } else if (recordOrArray.isEqual(operation.record)) {
       switch (operation.op) {
         case 'updateRecord':
           return [];
@@ -247,7 +252,7 @@ export default class Store {
       operation.op === 'removeRecord'
     ) {
       const changes: string[] = [];
-      this.eachRelationship(record.type, (name: string, { model, type }: RelationshipDefinition) => {
+      this.eachRelationship(recordOrArray.type, (name: string, { model, type }: RelationshipDefinition) => {
         if (type === 'hasMany' && operation.record.type === model) {
           changes.push(name);
         }

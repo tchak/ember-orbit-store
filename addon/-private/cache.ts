@@ -2,7 +2,7 @@ import { Cache as OrbitCache } from '@orbit/store';
 import { RecordIdentity, QueryOrExpression, buildQuery } from '@orbit/data';
 import { Listener } from '@orbit/core';
 import { deepGet } from '@orbit/utils';
-import Store, { Scope } from 'ember-orbit-store';
+import Store, { Scope, LiveQueryArray } from 'ember-orbit-store';
 
 export default class Cache {
   private readonly sourceCache: OrbitCache;
@@ -50,7 +50,7 @@ export default class Cache {
     );
 
     this.store.query(query);
-    return this.store.changes().map(() => this.query(query));
+    return new LiveQueryArray(this, query);
   }
 
   findRelatedRecord(record: RecordIdentity, name: string) {
