@@ -1,5 +1,5 @@
 import OrbitStore from '@orbit/store';
-import { Record as OrbitRecord, Query, QueryOrExpression, buildQuery, RecordIdentity, RecordOperation, AttributeDefinition, RelationshipDefinition } from '@orbit/data';
+import { Schema, Record as OrbitRecord, Query, QueryOrExpression, buildQuery, RecordIdentity, RecordOperation, AttributeDefinition, RelationshipDefinition } from '@orbit/data';
 import { QueryResultData } from '@orbit/record-cache';
 import { Dict } from '@orbit/utils';
 import { tracked } from '@glimmer/tracking';
@@ -15,10 +15,12 @@ enum Changes {
 
 export default class Store {
   readonly cache: Cache;
+  readonly schema: Schema;
   private readonly source: OrbitStore;
 
   constructor(source: OrbitStore) {
     this.source = source;
+    this.schema = source.schema;
     this.cache = new Cache(source.cache, this);
 
     if (DEBUG) {
@@ -262,19 +264,15 @@ export default class Store {
     return Changes.None;
   }
 
-  private getModel(type: string) {
-    return this.source.schema.getModel(type);
-  }
-
   eachAttribute(type: string, callback: (name: string, attribute: AttributeDefinition) => void) {
-    const attributes = this.getModel(type).attributes || {};
+    const attributes = this.schema.getModel(type).attributes || {};
     for (let attribute in attributes) {
       callback(attribute, attributes[attribute]);
     }
   }
 
   eachRelationship(type: string, callback: (name: string, relationship: RelationshipDefinition) => void) {
-    const relationships = this.getModel(type).relationships || {};
+    const relationships = this.schema.getModel(type).relationships || {};
     for (let relationship in relationships) {
       callback(relationship, relationships[relationship]);
     }
