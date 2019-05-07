@@ -5,14 +5,18 @@ export function initialize(application) {
   let config = application.resolveRegistration('config:environment') || {};
   config.orbit = config.orbit || {};
   orbitConfig.models = config.orbit.models || {};
-  application.register('ember-orbit-store:config', orbitConfig, { instantiate: false });
+  application.register('ember-orbit-store:config', orbitConfig, {
+    instantiate: false
+  });
 
   // Customize pluralization rules
-  if (application.__registry__ &&
-      application.__registry__.resolver &&
-      application.__registry__.resolver.pluralizedTypes) {
+  if (
+    application.__registry__ &&
+    application.__registry__.resolver &&
+    application.__registry__.resolver.pluralizedTypes
+  ) {
     application.__registry__.resolver.pluralizedTypes.source = 'sources';
-    application.__registry__.resolver.pluralizedTypes.strategy =  'strategies';
+    application.__registry__.resolver.pluralizedTypes.strategy = 'strategies';
   }
 
   // Store source (which is injected in store service)
