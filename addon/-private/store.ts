@@ -6,11 +6,7 @@ import { tracked } from '@glimmer/tracking';
 import { registerWaiter, unregisterWaiter } from '@ember/test';
 import { DEBUG } from '@glimmer/env';
 import Observable from 'zen-observable';
-
-import Cache from './cache';
-import Record from './record';
-import Scope from './scope';
-import { defineProperty } from './property';
+import { Cache, Record, Scope } from 'ember-orbit-store';
 
 enum Changes {
   None,
@@ -19,12 +15,11 @@ enum Changes {
 
 export default class Store {
   readonly cache: Cache;
+  private readonly source: OrbitStore;
 
-  private readonly _store: OrbitStore;
-
-  constructor(store: OrbitStore) {
-    this._store = store;
-    this.cache = new Cache(store.cache, this);
+  constructor(source: OrbitStore) {
+    this.source = source;
+    this.cache = new Cache(source.cache, this);
 
     if (DEBUG) {
       registerWaiter(this, this.isIdle);
@@ -62,12 +57,8 @@ export default class Store {
     });
   }
 
-  private getModel(type: string) {
-    return this._store.schema.getModel(type);
-  }
-
   async addRecord(type: string, record: Dict<any>) {
-    const id = this._store.schema.generateId();
+    const id = this.source.schema.generateId();
     const attributes: Dict<any> = {};
     const relationships: Dict<any> = {};
 
@@ -79,7 +70,7 @@ export default class Store {
     });
 
     const result = await this.loading(
-      this._store.update(t =>
+      this.source.update(t =>
         t.addRecord({
           id,
           type,
@@ -98,7 +89,7 @@ export default class Store {
   async updateRecord(identity: RecordIdentity, attributes: Dict<any>) {
     if (Object.keys(attributes).length !== 0) {
       await this.loading(
-        this._store.update(t =>
+        this.source.update(t =>
           Object.keys(attributes).map(attribute =>
             t.replaceAttribute(identity, attribute, attributes[attribute])
           )
@@ -111,7 +102,35 @@ export default class Store {
 
   async removeRecord(identity: RecordIdentity) {
     await this.loading(
-      this._store.update(t => t.removeRecord(identity)),
+      this.source.update(t => t.removeRecord(identity)),
+      'mutation'
+    );
+  }
+
+  async addToRelatedRecords(owner: RecordIdentity, name: string, record: RecordIdentity) {
+    await this.loading(
+      this.source.update(t => t.addToRelatedRecords(owner, name, record)),
+      'mutation'
+    );
+  }
+
+  async removeFromRelatedRecords(owner: RecordIdentity, name: string, record: RecordIdentity) {
+    await this.loading(
+      this.source.update(t => t.removeFromRelatedRecords(owner, name, record)),
+      'mutation'
+    );
+  }
+
+  async replaceRelatedRecords(owner: RecordIdentity, name: string, records: RecordIdentity[]) {
+    await this.loading(
+      this.source.update(t => t.replaceRelatedRecords(owner, name, records)),
+      'mutation'
+    );
+  }
+
+  async replaceRelatedRecord(owner: RecordIdentity, name: string, record: RecordIdentity) {
+    await this.loading(
+      this.source.update(t => t.replaceRelatedRecord(owner, name, record)),
       'mutation'
     );
   }
@@ -123,12 +142,12 @@ export default class Store {
   }
 
   fork() {
-    const store = this._store.fork();
-    return new Store(store);
+    const source = this.source.fork();
+    return new Store(source);
   }
 
   merge(store: Store) {
-    return this._store.merge(store._store);
+    return this.source.merge(store.source);
   }
 
   scope(type: string) {
@@ -140,10 +159,10 @@ export default class Store {
       queryOrExpression,
       options,
       id,
-      this._store.queryBuilder
+      this.source.queryBuilder
     );
 
-    const result = await this._store.query(query);
+    const result = await this.source.query(query);
     return this.materialize(query, result);
   }
 
@@ -194,26 +213,12 @@ export default class Store {
     return this.materializeOne(result);
   }
 
-  private materializeMany(results: OrbitRecord[]): Record[] {
-    return results.map(result => this.materializeOne(result));
+  private materializeOne(result: OrbitRecord): Record {
+    return new Record(result.type, result.id, this);
   }
 
-  private materializeOne(result: OrbitRecord): Record {
-    const record = new Record(result.type, result.id, this);
-
-    this.eachAttribute(result.type, (name: string) => {
-      defineProperty(record, name, () => record.store.cache.readAttribute(record, name));
-    });
-
-    this.eachRelationship(result.type, (name: string, { type }: RelationshipDefinition) => {
-      if (type === 'hasMany') {
-        defineProperty(record, name, () => record.hasMany(name).records);
-      } else {
-        defineProperty(record, name, () => record.hasOne(name).record);
-      }
-    });
-
-    return record;
+  private materializeMany(results: OrbitRecord[]): Record[] {
+    return results.map(result => this.materializeOne(result));
   }
 
   private computeChanges(record: Record, operation: RecordOperation): string[] | Changes {
@@ -246,6 +251,10 @@ export default class Store {
       return changes;
     }
     return Changes.None;
+  }
+
+  private getModel(type: string) {
+    return this.source.schema.getModel(type);
   }
 
   eachAttribute(type: string, callback: (name: string, attribute: AttributeDefinition) => void) {

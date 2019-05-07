@@ -1,9 +1,7 @@
-import { RecordIdentity } from '@orbit/data';
+import { notifyPropertyChange } from '@ember/object';
+import { RecordIdentity, RelationshipDefinition } from '@orbit/data';
 import { Dict } from '@orbit/utils';
-
-import Store from './store';
-import { HasOneRelationship, HasManyRelationship } from './relationship';
-import { notifyPropertyChange } from './property';
+import Store, { HasOneRelationship, HasManyRelationship } from 'ember-orbit-store';
 
 export default class Record implements RecordIdentity {
   [attribute: string]: any;
@@ -16,6 +14,18 @@ export default class Record implements RecordIdentity {
     this.type = type;
     this.id = id;
     this.store = store;
+
+    store.eachAttribute(type, (name: string) => {
+      defineProperty(this, name, () => this.readAttribute(name));
+    });
+
+    store.eachRelationship(type, (name: string, { type }: RelationshipDefinition) => {
+      if (type === 'hasMany') {
+        defineProperty(this, name, () => this.hasMany(name).records);
+      } else {
+        defineProperty(this, name, () => this.hasOne(name).record);
+      }
+    });
   }
 
   update(attributes: Dict<any>) {
@@ -34,24 +44,54 @@ export default class Record implements RecordIdentity {
     return new HasManyRelationship(this, name);
   }
 
+  readAttribute(name: string) {
+    return this.store.cache.readAttribute(this, name);
+  }
+
   isEqual(record: RecordIdentity) {
     return this.id === record.id && this.type === record.type;
+  }
+
+  notifyPropertyChange(name: string) {
+    const cache = recordDataCache.get(this);
+    if (cache) {
+      delete cache[name];
+    }
+    notifyPropertyChange(this, name);
   }
 
   notifyPropertyChanges(properties: string[]): void {
     if (properties.length) {
       for (let property of properties) {
-        notifyPropertyChange(this, property);
+        this.notifyPropertyChange(property);
       }
     } else {
       this.store.eachAttribute(this.type, (name: string) => {
-        notifyPropertyChange(this, name);
+        this.notifyPropertyChange(name);
       });
       this.store.eachRelationship(this.type, (name: string) => {
-        notifyPropertyChange(this, name);
+        this.notifyPropertyChange(name);
       });
     }
   }
 }
 
+const recordDataCache = new WeakMap();
 
+function defineProperty(record: Record, name: string, callback: () => void) {
+  Object.defineProperty(record, name, {
+    get: () => lazyLoadRecordData(record, name, callback)
+  });
+}
+
+function lazyLoadRecordData(record: Record, name: string, load: () => any): any {
+  let cache = recordDataCache.get(record);
+  if (!cache) {
+    cache = {};
+    recordDataCache.set(record, cache);
+  }
+  if (!cache[name]) {
+    cache[name] = load();
+  }
+  return cache[name];
+}

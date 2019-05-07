@@ -2,17 +2,15 @@ import { Cache as OrbitCache } from '@orbit/store';
 import { RecordIdentity, QueryOrExpression, buildQuery } from '@orbit/data';
 import { Listener } from '@orbit/core';
 import { deepGet } from '@orbit/utils';
-
-import Store from './store';
-import Scope from './scope';
+import Store, { Scope } from 'ember-orbit-store';
 
 export default class Cache {
-  private readonly _cache: OrbitCache;
-  private readonly _store: Store;
+  private readonly sourceCache: OrbitCache;
+  private readonly store: Store;
 
-  constructor(cache: OrbitCache, store: Store) {
-    this._cache = cache;
-    this._store = store;
+  constructor(source: OrbitCache, store: Store) {
+    this.sourceCache = source;
+    this.store = store;
   }
 
   scope(type: string) {
@@ -20,11 +18,11 @@ export default class Cache {
   }
 
   on(event: string, listener: Listener) {
-    this._cache.on(event, listener);
+    this.sourceCache.on(event, listener);
   }
 
   off(event: string, listener?: Listener) {
-    this._cache.off(event, listener);
+    this.sourceCache.off(event, listener);
   }
 
   destroy() {
@@ -36,11 +34,11 @@ export default class Cache {
       queryOrExpression,
       options,
       id,
-      this._cache.queryBuilder
+      this.sourceCache.queryBuilder
     );
 
-    const result = this._cache.query(query);
-    return this._store.materialize(query, result);
+    const result = this.sourceCache.query(query);
+    return this.store.materialize(query, result);
   }
 
   liveQuery(queryOrExpression: QueryOrExpression, options?: object, id?: string) {
@@ -48,11 +46,11 @@ export default class Cache {
       queryOrExpression,
       options,
       id,
-      this._cache.queryBuilder
+      this.sourceCache.queryBuilder
     );
 
-    this._store.query(query);
-    return this._store.changes().map(() => this.query(query));
+    this.store.query(query);
+    return this.store.changes().map(() => this.query(query));
   }
 
   findRelatedRecord(record: RecordIdentity, name: string) {
@@ -64,7 +62,7 @@ export default class Cache {
   }
 
   readAttribute(identity: RecordIdentity, attribute: string): any {
-    const data = this._cache.getRecordSync(identity);
+    const data = this.sourceCache.getRecordSync(identity);
     return data && deepGet(data, ['attributes', attribute]);
   }
 }

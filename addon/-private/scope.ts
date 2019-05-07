@@ -1,28 +1,30 @@
 import { clone } from "@orbit/utils";
 import { QueryBuilder, SortQBParam, FilterQBParam, QueryOrExpression } from "@orbit/data";
-
-import Cache from "./cache";
-import Store from "./store";
+import Store, { Cache } from 'ember-orbit-store';
 
 type Queryable = Store | Cache;
 
 export default class Scope {
-  private readonly _type: string;
-  private readonly _queryable: Queryable;
+  private readonly type: string;
+  private readonly queryable: Queryable;
   private _filter?: FilterQBParam;
   private _sort?: SortQBParam;
 
   constructor(type: string, queryable: Queryable) {
-    this._type = type;
-    this._queryable = queryable;
+    this.type = type;
+    this.queryable = queryable;
+  }
+
+  query(queryOrExpression: QueryOrExpression, options?: object, id?: string) {
+    return this.queryable.query(queryOrExpression, options, id);
   }
 
   live(options?: object) {
     const query = this.queryBuilder();
-    if (this._queryable instanceof Store) {
+    if (this.queryable instanceof Store) {
       throw new Error('Only cache can execute a live query.');
     }
-    return this._queryable.liveQuery(query, options);
+    return this.queryable.liveQuery(query, options);
   }
 
   all(options?: object) {
@@ -47,10 +49,6 @@ export default class Scope {
     return copy;
   }
 
-  query(queryOrExpression: QueryOrExpression, options?: object, id?: string) {
-    return this._queryable.query(queryOrExpression, options, id);
-  }
-
   private copy() {
     return clone(this);
   }
@@ -58,9 +56,9 @@ export default class Scope {
   private queryBuilder(id?: string) {
     return (q: QueryBuilder) => {
       if (id) {
-        return q.findRecord({ type: this._type, id });
+        return q.findRecord({ type: this.type, id });
       } else {
-        let terms = q.findRecords(this._type);
+        let terms = q.findRecords(this.type);
         if (this._filter) {
           terms = terms.filter(this._filter);
         }
