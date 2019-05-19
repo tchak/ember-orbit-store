@@ -1,14 +1,36 @@
 
 import { RecordIdentity, serializeRecordIdentity, deserializeRecordIdentity } from '@orbit/data';
-import MemorySource from '@orbit/store';
 
-import { RecordModel } from './record-data';
+export class RecordIdentitySerializer implements IdentitySerializer<RecordIdentity> {
+  serialize(identity: RecordIdentity) {
+    return serializeRecordIdentity(identity);
+  }
 
-export default class IdentityMapFactory {
-  get(source: MemorySource) {
+  deserialize(identifier: string) {
+    return deserializeRecordIdentity(identifier);
+  }
+}
+
+export interface IdentityMapSettings<Identity> {
+  serializer: IdentitySerializer<Identity>;
+}
+
+export interface IdentitySerializer<Identity> {
+  serialize(identity: Identity): string;
+  deserialize(identifier: string): Identity;
+}
+
+export default class IdentityMapFactory<Identity, Model> {
+  private serializer: IdentitySerializer<Identity>;
+
+  constructor(settings: IdentityMapSettings<Identity>) {
+    this.serializer = settings.serializer;
+  }
+
+  get<Source extends object>(source: Source) {
     let identityMap = identityMapBySource.get(source);
     if (!identityMap) {
-      identityMap = new IdentityMap();
+      identityMap = new IdentityMap<Identity, Model>({ serializer: this.serializer });
       identityMapBySource.set(source, identityMap);
     }
     return identityMap;
@@ -17,38 +39,40 @@ export default class IdentityMapFactory {
 
 const identityMapBySource = new WeakMap();
 
-export class IdentityMap implements Map<RecordIdentity, RecordModel> {
-  private readonly _map: Map<string, RecordModel>;
+export class IdentityMap<Identity, Model> implements Map<Identity, Model> {
+  private serializer: IdentitySerializer<Identity>;
+  private readonly _map: Map<string, Model>;
 
-  constructor() {
+  constructor(settings: IdentityMapSettings<Identity>) {
+    this.serializer = settings.serializer;
     this._map = new Map();
   }
 
-  get(identity: RecordIdentity) {
-    const identifier = serializeRecordIdentity(identity);
+  get(identity: Identity) {
+    const identifier = this.serializer.serialize(identity);
     return this._map.get(identifier);
   }
 
-  set(identity: RecordIdentity, record: RecordModel) {
-    const identifier = serializeRecordIdentity(identity);
+  set(identity: Identity, record: Model) {
+    const identifier = this.serializer.serialize(identity);
     this._map.set(identifier, record);
     return this;
   }
 
-  has(identity: RecordIdentity) {
-    const identifier = serializeRecordIdentity(identity);
+  has(identity: Identity) {
+    const identifier = this.serializer.serialize(identity);
     return this._map.has(identifier);
   }
 
-  delete(identity: RecordIdentity) {
-    const identifier = serializeRecordIdentity(identity);
+  delete(identity: Identity) {
+    const identifier = this.serializer.serialize(identity);
     this._map.delete(identifier);
     return true;
   }
 
   entries() {
     return Array.from(this._map)
-      .map(([identifier, record]): [RecordIdentity, RecordModel] => [deserializeRecordIdentity(identifier), record])[Symbol.iterator]();
+      .map(([identifier, record]): [Identity, Model] => [this.serializer.deserialize(identifier), record])[Symbol.iterator]();
   }
 
   keys() {
@@ -67,7 +91,7 @@ export class IdentityMap implements Map<RecordIdentity, RecordModel> {
     this._map.clear();
   }
 
-  forEach(callbackFn: (record: RecordModel, identity: RecordIdentity, map: IdentityMap) => void, thisArg?: any) {
+  forEach(callbackFn: (record: Model, identity: Identity, map: IdentityMap<Identity, Model>) => void, thisArg?: any) {
     for (let [identity, record] of this) {
       callbackFn.call(thisArg, record, identity, this);
     }

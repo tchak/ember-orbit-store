@@ -4,16 +4,16 @@ import { RecordManager } from '../record-data';
 
 import LiveQueryArray from './live-query-array';
 
-export interface CacheSettings {
+export interface CacheSettings<Model> {
   cache: MemoryCache;
-  manager: RecordManager;
+  manager: RecordManager<Model>;
 }
 
-export default class Cache {
+export default class Cache<Model> {
   private sourceCache: MemoryCache;
-  private readonly manager: RecordManager;
+  private readonly manager: RecordManager<Model>;
 
-  constructor(settings: CacheSettings) {
+  constructor(settings: CacheSettings<Model>) {
     this.sourceCache = settings.cache;
     this.manager = settings.manager;
   }
@@ -42,7 +42,7 @@ export default class Cache {
       this.sourceCache.queryBuilder
     );
 
-    return new LiveQueryArray(this, query);
+    return new LiveQueryArray<Model>(this, query);
   }
 
   findRecords(type: string) {

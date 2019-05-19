@@ -1,9 +1,9 @@
 import { deepGet } from '@orbit/utils';
-import RecordData, { getRecordData, RecordModel } from '../record-data';
+import RecordData, { getRecordData } from '../record-data';
 
 import { HasOneRelationship, HasManyRelationship } from './relationships';
 
-export default class Model implements RecordModel {
+export default class Model {
   [attribute: string]: unknown;
 
   get id(): string {
@@ -14,7 +14,7 @@ export default class Model implements RecordModel {
     return getRecordData(this).identity.type;
   }
 
-  constructor(recordData: RecordData) {
+  constructor(recordData: RecordData<Model>) {
     recordData.eachAttribute(name => {
       Object.defineProperty(this, name, {
         get: () => recordData.getAttribute(name)

@@ -1,5 +1,5 @@
 import { Schema, RecordRelationship, Record as OrbitRecord, ModelDefinition, RecordIdentity } from '@orbit/data';
-import { Dict, deepSet } from '@orbit/utils';
+import { deepSet } from '@orbit/utils';
 
 type Properties = Record<string, unknown>;
 

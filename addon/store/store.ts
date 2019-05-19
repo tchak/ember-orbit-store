@@ -2,32 +2,32 @@ import MemorySource from '@orbit/store';
 import { clone } from '@orbit/utils';
 import { QueryOrExpression, buildQuery, RecordIdentity, Record as OrbitRecord } from '@orbit/data';
 import { QueryResultData } from '@orbit/record-cache';
-import RecordData, { RecordModel, setRecordData } from '../record-data';
+import RecordData, { setRecordData } from '../record-data';
 
 import Cache from './cache';
 import changes from './changes';
 import normalizeRecordProperties from './normalize-record-properties';
 
-type Model = new (recordData: RecordData) => RecordModel;
-type IdentityMap = Map<RecordIdentity, RecordModel>;
-type IdentityMapFactory = {
-  get(source: MemorySource): IdentityMap;
+type ModelFactory<Model extends object> = new (recordData: RecordData<Model>) => Model;
+type IdentityMap<Model extends object> = Map<RecordIdentity, Model>;
+type IdentityMapFactory<Model extends object> = {
+  get(source: MemorySource): IdentityMap<Model>;
 };
 
-export interface StoreSettings {
+export interface StoreSettings<Model extends object> {
   source: MemorySource;
-  identityMap?: IdentityMapFactory;
-  ModelClass?: Model;
+  identityMap?: IdentityMapFactory<Model>;
+  ModelClass?: ModelFactory<Model>;
 }
 
-export default class Store {
+export default class Store<Model extends object> {
   readonly source: MemorySource;
-  readonly cache: Cache;
+  readonly cache: Cache<Model>;
 
-  private readonly settings: StoreSettings;
-  private readonly identityMap?: IdentityMap;
+  private readonly settings: StoreSettings<Model>;
+  private readonly identityMap?: IdentityMap<Model>;
 
-  constructor(settings: StoreSettings) {
+  constructor(settings: StoreSettings<Model>) {
     this.source = settings.source;
     this.settings = settings;
     this.identityMap = settings.identityMap ? settings.identityMap.get(this.source) : undefined;
@@ -52,7 +52,7 @@ export default class Store {
   }
 
   recordDataFor(identity: RecordIdentity) {
-    return new RecordData({
+    return new RecordData<Model>({
       identity,
       source: this.source,
       manager: this.manager
@@ -108,7 +108,7 @@ export default class Store {
     });
   }
 
-  merge(store: Store) {
+  merge(store: Store<Model>) {
     return this.source.merge(store.source);
   }
 
@@ -136,7 +136,7 @@ export default class Store {
     }
   }
 
-  private lookupOne(identity: RecordIdentity): RecordModel | OrbitRecord {
+  private lookupOne(identity: RecordIdentity): Model {
     let record;
 
     if (this.identityMap) {
@@ -149,10 +149,10 @@ export default class Store {
         record = new this.settings.ModelClass(recordData);
         setRecordData(record, recordData);
       } else {
-        record = clone(this.source.cache.getRecordSync(identity));
+        record = clone(this.source.cache.getRecordSync(identity)) as Model;
       }
 
-      if (this.identityMap) {
+      if (this.identityMap && record) {
         this.identityMap.set(identity, record);
       }
     }

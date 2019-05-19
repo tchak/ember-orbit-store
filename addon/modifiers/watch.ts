@@ -4,17 +4,17 @@ import { RecordIdentity } from '@orbit/data';
 
 import Store, { Model, LiveQueryArray } from 'ember-orbit-store';
 
-type RecordOrArray = Model | LiveQueryArray;
+type RecordOrArray = Model | LiveQueryArray<Model>;
 
 export default makeFunctionalModifier(
   { services: ['store'] },
-  (store: Store, _: Element, [recordOrArray]: RecordOrArray[]) => {
+  (store: Store<Model>, _: Element, [recordOrArray]: RecordOrArray[]) => {
     const subscription = watch(store, recordOrArray);
     return () => subscription.unsubscribe();
   }
 );
 
-function watch(store: Store, recordOrArray: RecordOrArray) {
+function watch(store: Store<Model>, recordOrArray: RecordOrArray) {
   return store.changes(getIdentity(recordOrArray)).subscribe(changeSet => {
     if (recordOrArray instanceof LiveQueryArray) {
       recordOrArray.notifyArrayChange();

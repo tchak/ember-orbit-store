@@ -3,40 +3,36 @@ import { deepGet } from '@orbit/utils';
 import { RecordIdentity, cloneRecordIdentity, AttributeDefinition, RelationshipDefinition } from '@orbit/data';
 import { QueryResultData } from '@orbit/record-cache';
 
-export interface RecordModel {
-  id: string
-}
-
-export interface RecordManager {
-  lookup(result: QueryResultData): RecordModel | RecordModel[] | null;
+export interface RecordManager<Model> {
+  lookup(result: QueryResultData): Model | Model[] | null;
   evict(identity: RecordIdentity): void;
 }
 
 const hasOwnProperty = Object.prototype.hasOwnProperty;
 const recordDataCache = new WeakMap();
 
-export function getRecordData(owner: RecordModel): RecordData {
+export function getRecordData<Model extends object>(owner: Model): RecordData<Model> {
   return recordDataCache.get(owner);
 }
 
-export function setRecordData(owner: RecordModel, recordData: RecordData) {
+export function setRecordData<Model extends object>(owner: Model, recordData: RecordData<Model>) {
   recordDataCache.set(owner, recordData);
 }
 
-export interface RecordDataSettings {
+export interface RecordDataSettings<Model> {
   identity: RecordIdentity;
   source: MemorySource;
-  manager: RecordManager;
+  manager: RecordManager<Model>;
 }
 
-export default class RecordData {
+export default class RecordData<Model> {
   identity: RecordIdentity;
 
   private source: MemorySource;
-  private manager: RecordManager;
+  private manager: RecordManager<Model>;
   private data: Record<string, any>;
 
-  constructor(settings: RecordDataSettings) {
+  constructor(settings: RecordDataSettings<Model>) {
     this.identity = cloneRecordIdentity(settings.identity);
     this.source = settings.source;
     this.manager = settings.manager;

@@ -1,10 +1,9 @@
 import { Query } from '@orbit/data';
-import RecordModel from '../record-data';
 
 import Cache from './cache';
 
-export default class LiveQueryArray implements Iterable<RecordModel> {
-  private readonly cache: Cache;
+export default class LiveQueryArray<Model> implements Iterable<Model> {
+  private readonly cache: Cache<Model>;
   private readonly query: Query;
 
   private get value() {
@@ -24,7 +23,7 @@ export default class LiveQueryArray implements Iterable<RecordModel> {
     return this.value.length;
   }
 
-  constructor(cache: Cache, query: Query) {
+  constructor(cache: Cache<Model>, query: Query) {
     this.cache = cache;
     this.query = query;
     Object.freeze(this);
