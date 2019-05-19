@@ -4,17 +4,20 @@ import { setupRenderingTest } from 'ember-qunit';
 import { render } from '@ember/test-helpers';
 import hbs from 'htmlbars-inline-precompile';
 
+import Store from 'ember-orbit-store';
+import Model from 'ember-orbit-store/model';
+
 module('Integration | watch', function(hooks) {
   setupRenderingTest(hooks);
 
   test('should watch for record changes', async function(assert) {
-    assert.expect(6);
+    assert.expect(5);
 
-    const store = this.owner.lookup('service:store');
-    const record = await store.addRecord('person', { name: 'Paul' });
-    const sameRecord = store.cache.scope('person').find(record.id);
+    const store: Store = this.owner.lookup('service:store');
+    const record = (await store.addRecord({ type: 'person', name: 'Paul' })) as Model;
+    const sameRecord = (store.cache.findRecord({ type: 'person', id: record.id })) as Model;
 
-    assert.ok(record.isEqual(sameRecord), 'should be instances of same record');
+    assert.ok(record.id === sameRecord.id, 'should be instances of same record');
 
     this.set('record', record);
 
@@ -25,7 +28,6 @@ module('Integration | watch', function(hooks) {
 
     await record.update({ name: 'Paul Chavard' });
 
-    assert.equal(record.store.cache.readAttribute(record, 'name'), 'Paul Chavard', 'record name in cache should change');
     assert.equal(record.name, 'Paul Chavard', 'record name should change');
     assert.dom('.name').hasText('Paul Chavard');
   });
@@ -33,9 +35,9 @@ module('Integration | watch', function(hooks) {
   test('should watch for collection changes', async function(assert) {
     assert.expect(6);
 
-    const store = this.owner.lookup('service:store');
-    await store.addRecord('person', { id: '1', name: 'Paul' });
-    const recordsArray = store.cache.scope('person').live();
+    const store: Store = this.owner.lookup('service:store');
+    await store.addRecord({ type: 'person', id: '1', name: 'Paul' });
+    const recordsArray = store.cache.liveQuery(q => q.findRecords('person'));
 
     this.set('recordsArray', recordsArray);
 
@@ -49,7 +51,7 @@ module('Integration | watch', function(hooks) {
     assert.equal([...recordsArray][0].name, 'Paul', 'first record has a name');
     assert.dom('.collection').hasText('Paul');
 
-    await store.addRecord('person', { id: '2', name: 'Eve' });
+    await store.addRecord({ type: 'person', id: '2', name: 'Eve' });
 
     assert.equal(recordsArray.length, 2, 'records array has two records');
     assert.equal([...recordsArray][1].name, 'Eve', 'second record has a name');

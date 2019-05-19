@@ -1,4 +1,4 @@
-import OrbitStore from '@orbit/store';
+import MemorySource from '@orbit/store';
 
 export function initialize(application) {
   let orbitConfig = {};
@@ -19,13 +19,14 @@ export function initialize(application) {
     application.__registry__.resolver.pluralizedTypes.strategy = 'strategies';
   }
 
-  // Store source (which is injected in store service)
-  application.register('source:store', {
+  // Memory source (which is injected in store service)
+  application.register('source:memory', {
     create(injections = {}) {
-      return new OrbitStore(injections);
+      injections.name = 'memory';
+      return new MemorySource(injections);
     }
   });
-  application.inject('service:store', 'source', 'source:store');
+  application.inject('service:store', 'source', 'source:memory');
 
   // Injections to all sources
   application.inject('source', 'schema', 'service:schema');

@@ -1,7 +1,8 @@
-import Store from 'ember-orbit-store';
+import Store, { StoreSettings, Model } from 'ember-orbit-store';
 
 export default {
   create(injections: Record<string, any> = {}) {
-    return new Store(injections.source);
+    injections.ModelClass = Model;
+    return new Store(injections as StoreSettings);
   }
 }
